@@ -35,7 +35,19 @@ Harbor puts folders of apps in the Dock. Click it and a popover of its apps open
 
 ## Install
 
-Harbor isn't distributed as a signed download yet, so build it from source:
+### Direct Download
+
+Download `Harbor-<version>.zip` from the [latest release](https://github.com/griffhurt/harbor/releases/latest), unzip it, and move **Harbor** to your Applications folder.
+
+### Homebrew
+
+```sh
+brew install --cask griffhurt/tap/harbor
+```
+
+To update later, run `brew upgrade --cask harbor`.
+
+### From Source
 
 ```sh
 git clone https://github.com/griffhurt/harbor.git
@@ -76,9 +88,11 @@ The folder shape is applied as a custom icon (the kind Finder's Get Info sets). 
 
 1. In Harbor, click **Remove from Dock** for each folder (or drag the tiles out of the Dock).
 2. Delete these:
-   - `~/Applications/Harbor.app`
+   - `Harbor.app`, from `/Applications` or `~/Applications`
    - `~/Applications/Harbor Folders`
    - `~/Library/Application Support/Harbor`
+
+If you installed with Homebrew, `brew uninstall --zap --cask harbor` does step 2 for you.
 
 ## Development
 
@@ -112,6 +126,8 @@ Then build a release:
 git tag v1.0.0
 NOTARY_PROFILE=harbor-notary scripts/build.sh --release
 ```
+
+To publish it, push the tag, attach the zip to a GitHub release (`gh release create v1.0.0 build/Harbor-1.0.0.zip`), and update `version` and `sha256` in the cask at [griffhurt/homebrew-tap](https://github.com/griffhurt/homebrew-tap) (`shasum -a 256 build/Harbor-1.0.0.zip`).
 
 Without `NOTARY_PROFILE` the app is signed but not notarized, so other Macs still block it. You can override the defaults with `VERSION`, `BUILD_NUMBER` and `SIGN_IDENTITY`; see the top of `scripts/build.sh`.
 
