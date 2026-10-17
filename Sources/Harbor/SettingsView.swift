@@ -4,6 +4,7 @@ import SwiftUI
 /// Harbor › Settings: how folders open from the Dock. Applies to every folder.
 struct SettingsView: View {
     @Environment(HarborModel.self) private var model
+    @EnvironmentObject private var updater: AppUpdater
 
     private var style: PopoverStyle { model.store.settings.popoverStyle }
 
@@ -35,6 +36,11 @@ struct SettingsView: View {
                 .padding(.vertical, 8)
                 .background(.quaternary.opacity(0.5), in: .rect(cornerRadius: 12))
                 .animation(.snappy(duration: 0.2), value: style)
+
+            if updater.isEnabled {
+                Divider()
+                Toggle("Automatically check for updates", isOn: $updater.automaticallyChecksForUpdates)
+            }
         }
         .padding(20)
         .frame(width: 560)

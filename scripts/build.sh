@@ -1,7 +1,8 @@
 #!/bin/bash
 # Builds build/Harbor.app with SwiftPM.
 # Usage: scripts/build.sh [--release] [--install]
-#   --release  sign with your Developer ID for distribution, and notarize if NOTARY_PROFILE is set
+#   --release  sign with your Developer ID for distribution, notarize if NOTARY_PROFILE is set,
+#              and write build/appcast.xml for Sparkle (signed with the update key in your keychain)
 #   --install  copy the app to ~/Applications and launch it
 #
 # Release builds read these environment variables:
@@ -14,6 +15,11 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
 APP="$ROOT/build/Harbor.app"
+REPO_URL="https://github.com/griffhurt/harbor"
+# Each release attaches its appcast, so the latest release's copy is always the current feed.
+FEED_URL="$REPO_URL/releases/latest/download/appcast.xml"
+# The keychain account that holds Sparkle's private EdDSA key (made with Sparkle's generate_keys).
+UPDATE_KEY_ACCOUNT="com.griffhurt.harbor"
 
 RELEASE=false
 INSTALL=false
@@ -50,24 +56,33 @@ BIN="$(swift build -c release --show-bin-path)"
 
 rm -rf "$APP"
 echo "• Bundle"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Helpers" "$APP/Contents/Resources"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Helpers" "$APP/Contents/Frameworks" "$APP/Contents/Resources"
 cp "$BIN/Harbor" "$APP/Contents/MacOS/Harbor"
 cp "$BIN/HarborStub" "$APP/Contents/Helpers/HarborStub"
+ditto "$BIN/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 "$BIN/HarborStub" --render-icon "$APP/Contents/Resources/AppIcon.icns" sailboat.fill 3A9BF5 tile
 
 if $RELEASE; then
     echo "• Sign $VERSION ($BUILD_NUMBER) as $SIGN_IDENTITY"
-    # Info.plist is sealed by the signature, so the version has to be set first.
+    # Info.plist is sealed by the signature, so the version has to be set first. Only release
+    # builds get a feed URL, which is what turns on Sparkle (see AppUpdater).
     /usr/libexec/PlistBuddy \
         -c "Set :CFBundleShortVersionString $VERSION" \
         -c "Set :CFBundleVersion $BUILD_NUMBER" \
+        -c "Add :SUFeedURL string $FEED_URL" \
         "$APP/Contents/Info.plist"
-    # Inside out: the app's signature records the helper's, so the helper is signed first.
+    # Inside out: each signature records the ones nested in it, so the innermost code goes first.
     # Notarization requires the hardened runtime (--options runtime) and a secure timestamp.
-    codesign --force --options runtime --timestamp --identifier com.griffhurt.harbor.stub \
-        --sign "$SIGN_IDENTITY" "$APP/Contents/Helpers/HarborStub"
-    codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP"
+    sign() { codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$@"; }
+    SPARKLE="$APP/Contents/Frameworks/Sparkle.framework/Versions/B"
+    sign "$SPARKLE/XPCServices/Installer.xpc"
+    sign --preserve-metadata=entitlements "$SPARKLE/XPCServices/Downloader.xpc"
+    sign "$SPARKLE/Autoupdate"
+    sign "$SPARKLE/Updater.app"
+    sign "$APP/Contents/Frameworks/Sparkle.framework"
+    sign --identifier com.griffhurt.harbor.stub "$APP/Contents/Helpers/HarborStub"
+    sign "$APP"
     codesign --verify --strict --deep "$APP"
 
     ZIP="$ROOT/build/Harbor-$VERSION.zip"
@@ -84,6 +99,28 @@ if $RELEASE; then
     rm -f "$ZIP"
     ditto -c -k --keepParent "$APP" "$ZIP"
     echo "Packaged $ZIP"
+
+    echo "• Appcast"
+    # Prints the attributes Sparkle checks before installing: sparkle:edSignature="…" length="…"
+    SIGNATURE="$("$ROOT/.build/artifacts/sparkle/Sparkle/bin/sign_update" --account "$UPDATE_KEY_ACCOUNT" "$ZIP")"
+    cat > "$ROOT/build/appcast.xml" <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+    <channel>
+        <title>Harbor</title>
+        <item>
+            <title>Version $VERSION</title>
+            <pubDate>$(LC_ALL=C date -u "+%a, %d %b %Y %H:%M:%S +0000")</pubDate>
+            <sparkle:version>$BUILD_NUMBER</sparkle:version>
+            <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <sparkle:fullReleaseNotesLink>$REPO_URL/releases/tag/v$VERSION</sparkle:fullReleaseNotesLink>
+            <enclosure url="$REPO_URL/releases/download/v$VERSION/Harbor-$VERSION.zip" type="application/octet-stream" $SIGNATURE/>
+        </item>
+    </channel>
+</rss>
+EOF
+    echo "Wrote $ROOT/build/appcast.xml"
 else
     codesign --force --sign - "$APP/Contents/Helpers/HarborStub"
     codesign --force --sign - "$APP"

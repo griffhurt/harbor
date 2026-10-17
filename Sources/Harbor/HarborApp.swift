@@ -16,10 +16,12 @@ struct HarborApp: App {
         Settings {
             SettingsView()
                 .environment(appDelegate.model)
+                .environmentObject(appDelegate.updater)
         }
         .commands {
             CommandGroup(replacing: .appInfo) {
                 Button("About Harbor") { appDelegate.showAbout() }
+                CheckForUpdatesButton(updater: appDelegate.updater)
             }
             CommandGroup(replacing: .help) {
                 Button("Harbor Help") { NSWorkspace.shared.open(Self.helpURL) }
@@ -33,6 +35,7 @@ struct HarborApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let model = HarborModel()
+    let updater = AppUpdater()
     private var window: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {

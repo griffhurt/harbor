@@ -23,6 +23,7 @@ Harbor puts folders of apps in the Dock. Click it and a popover of its apps open
 - **Quick launching**: click a folder to see its apps; running apps show a dot. Right-click the tile for a menu of its apps.
 - **Four styles**: Grid, Compact Grid, List or Fan (like the Dock's own fan), chosen in Harbor › Settings.
 - **Simple editing**: add apps from a searchable list or by dragging them in from Finder, and drag to rearrange.
+- **Automatic updates**: downloaded copies update themselves with [Sparkle](https://sparkle-project.org). Turn checking on or off in Harbor › Settings, or choose Harbor › Check for Updates….
 
 <p align="center">
   <img src="docs/editor.png" width="700" alt="The Harbor editor window with folders in the sidebar and color and symbol pickers">
@@ -103,33 +104,12 @@ swift test    # run the tests
 
 You can also open `Package.swift` in Xcode. The tests use Swift Testing. They cover the folder model and storage, icon rendering, the popover shape, and the Dock preference editing. The Dock tests only edit in-memory lists and never touch your real Dock.
 
-`scripts/build.sh` puts the two executables together into an app bundle: `Harbor` goes in `Contents/MacOS`, `HarborStub` goes in `Contents/Helpers`, and the app icon is rendered by `HarborStub --render-icon`. If you change the icon code, regenerate `docs/logo.png` with:
+`scripts/build.sh` puts the two executables together into an app bundle: `Harbor` goes in `Contents/MacOS`, `HarborStub` goes in `Contents/Helpers`, `Sparkle.framework` goes in `Contents/Frameworks`, and the app icon is rendered by `HarborStub --render-icon`. If you change the icon code, regenerate `docs/logo.png` with:
 
 ```sh
 "$(swift build --show-bin-path)/HarborStub" --render-icon /tmp/logo.icns sailboat.fill 3A9BF5 tile
 sips -s format png -z 512 512 /tmp/logo.icns --out docs/logo.png
 ```
-
-### Release builds
-
-`scripts/build.sh --release` signs the app with a Developer ID certificate and the hardened runtime, notarizes it, and packages it as `build/Harbor-<version>.zip`. The version comes from the tag on `HEAD` (`v1.2.0` becomes `1.2.0`), and the build number is the number of commits.
-
-Notarizing needs a notarytool keychain profile. Create one once with an [app-specific password](https://support.apple.com/102654):
-
-```sh
-xcrun notarytool store-credentials harbor-notary --apple-id <your Apple ID> --team-id <your team ID>
-```
-
-Then build a release:
-
-```sh
-git tag v1.0.0
-NOTARY_PROFILE=harbor-notary scripts/build.sh --release
-```
-
-To publish it, push the tag, attach the zip to a GitHub release (`gh release create v1.0.0 build/Harbor-1.0.0.zip`), and update `version` and `sha256` in the cask at [griffhurt/homebrew-tap](https://github.com/griffhurt/homebrew-tap) (`shasum -a 256 build/Harbor-1.0.0.zip`).
-
-Without `NOTARY_PROFILE` the app is signed but not notarized, so other Macs still block it. You can override the defaults with `VERSION`, `BUILD_NUMBER` and `SIGN_IDENTITY`; see the top of `scripts/build.sh`.
 
 ## License
 
