@@ -4,12 +4,17 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-test:
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Toolchain
         run: |
@@ -24,3 +29,13 @@ jobs:
 
       - name: Bundle Harbor.app
         run: scripts/build.sh
+
+      # ditto keeps the bundle's symlinks and permissions, which upload-artifact would drop.
+      - name: Zip Harbor.app
+        run: ditto -c -k --keepParent build/Harbor.app build/Harbor.zip
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Harbor
+          path: build/Harbor.zip
+          retention-days: 7

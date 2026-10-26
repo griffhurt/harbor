@@ -21,7 +21,7 @@ Releases are signed with Griffin's Developer ID, notarized by Apple, published o
 
 Use the new version in place of `1.1.0`.
 
-1. Commit everything, push `main`, and wait for CI to pass.
+1. Add a `## 1.1.0` section to `CHANGELOG.md`. Commit everything, push `main`, and wait for CI to pass.
 2. Tag the release:
    ```sh
    git tag v1.1.0 && git push origin v1.1.0
@@ -31,9 +31,10 @@ Use the new version in place of `1.1.0`.
    NOTARY_PROFILE=harbor-notary scripts/build.sh --release
    ```
    The version comes from the tag and the build number is the commit count. This makes `build/Harbor-1.1.0.zip` and `build/appcast.xml`. If Apple rejects the app, the script stops; `xcrun notarytool log <id> --keychain-profile harbor-notary` says why.
-4. Publish it, with **both** files:
+4. Publish it, with **both** files, using the version's changelog section as the notes:
    ```sh
-   gh release create v1.1.0 build/Harbor-1.1.0.zip build/appcast.xml --title "Harbor 1.1.0" --notes "…"
+   awk '/^## 1.1.0$/ { found = 1; next } /^## / { found = 0 } found' CHANGELOG.md |
+       gh release create v1.1.0 build/Harbor-1.1.0.zip build/appcast.xml --title "Harbor 1.1.0" --notes-file -
    ```
 5. Update the cask's `version` and `sha256` (`shasum -a 256 build/Harbor-1.1.0.zip`), then check, commit and push it:
    ```sh

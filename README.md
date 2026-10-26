@@ -5,7 +5,14 @@
 <h1 align="center">Harbor</h1>
 
 <p align="center">
-  Better dock organization on macOS
+  <b>Better dock organization on macOS</b>
+</p>
+
+<p align="center">
+  <a href="https://github.com/griffhurt/harbor/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/griffhurt/harbor"></a>
+  <a href="https://github.com/griffhurt/harbor/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/griffhurt/harbor/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="macOS 26 or later" src="https://img.shields.io/badge/macOS-26%2B-blue?logo=apple">
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/griffhurt/harbor"></a>
 </p>
 
 <p align="center">
@@ -111,6 +118,14 @@ You can also open `Package.swift` in Xcode. The tests use Swift Testing. They co
 sips -s format png -z 512 512 /tmp/logo.icns --out docs/logo.png
 ```
 
+## Feedback
+
+Found a bug or have an idea? Please [open an issue](https://github.com/griffhurt/harbor/issues). Bug reports are most useful with your macOS version, the Harbor version (Harbor › About Harbor), and the steps that led to the problem.
+
+See the [changelog](CHANGELOG.md) for what's new in each version.
+
 ## License
 
 [MIT](LICENSE) © 2026 Griffin Hurt
+
+Harbor includes [Sparkle](https://sparkle-project.org) for updates, which is also MIT-licensed.
